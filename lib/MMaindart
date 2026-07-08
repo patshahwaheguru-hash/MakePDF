@@ -1,0 +1,53 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+void main() => runApp(MakePDFApp());
+class MakePDFApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(title: 'MakePDF', theme: ThemeData(primaryColor: Color(0xFF2563EB)), home: HomePage(), debugShowCheckedModeBanner: false);
+  }
+}
+class HomePage extends StatefulWidget {
+  @override _HomePageState createState() => _HomePageState();
+}
+class _HomePageState extends State<HomePage> {
+  File? _excelFile; bool _loading = false;
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx', 'xls']);
+    if (result!= null) setState(() => _excelFile = File(result.files.single.path!));
+  }
+  Future<void> _convertToPdf() async {
+    if (_excelFile == null) return; setState(() => _loading = true);
+    var bytes = await _excelFile!.readAsBytes(); var excel = Excel.decodeBytes(bytes); final pdf = pw.Document();
+    for (var table in excel.tables.keys) {
+      var sheet = excel.tables[table]!;
+      pdf.addPage(pw.Page(build: (pw.Context context) {
+        return pw.Column(children: [
+          pw.Text(table, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 15),
+          pw.Table.fromTextArray(data: sheet.rows.map((row) => row.map((cell) => cell?.value.toString()?? '').toList()).toList()),
+        ]);
+      }));
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/MakePDF_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    await file.writeAsBytes(await pdf.save()); setState(() => _loading = false);
+    Share.shareXFiles([XFile(file.path)], text: 'Created with MakePDF');
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(appBar: AppBar(title: Text('MakePDF')), body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(Icons.picture_as_pdf, size: 120, color: Color(0xFF2563EB)), SizedBox(height: 30),
+      ElevatedButton(onPressed: _pickFile, child: Text(_excelFile == null? 'Select Excel File' : 'File Selected')), SizedBox(height: 20),
+      _loading? CircularProgressIndicator() : ElevatedButton(onPressed: _excelFile == null? null : _convertToPdf, child: Text('Convert to PDF'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green)),
+    ])));
+  }
+}
