@@ -1,0 +1,5 @@
+android {
+    ndkVersion "25.1.8937393"
+    
+    // ADD THIS LINE
+    project.ext.targetPlatform = "android-arm,android-arm64,android-x64"
