@@ -1,7 +1,15 @@
-The error persists because your android/app/build.gradle and android/settings.gradle are still in the old format. Here's the complete fix:
+The error is clear: settings.gradle is missing or doesn't have include ":app". Flutter shows "Type: malformed" and "Android package: null" because it can't find your Android project structure.
 
-Fix All 3 Android Files
-1. android/settings.gradle — Create or Replace
+Complete Fix — Follow These Steps Exactly
+Step 1: Go to Your GitHub Repo
+Navigate to: github.com/patshahwaheguru-hash/MakePDF/android
+
+Step 2: Check if settings.gradle Exists
+If it doesn't exist, create it
+If it exists, open it and check the content
+Step 3: Create/Edit android/settings.gradle
+The file must contain exactly this:
+
 gradle
 pluginManagement {
     def flutterSdkPath = {
@@ -28,103 +36,28 @@ plugins {
 }
 
 include ":app"
-2. android/build.gradle — Replace Entire File
-gradle
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
+The last line include ":app" is CRITICAL — without it, the build fails.
 
-rootProject.buildDir = '../build'
+Step 4: Verify Your Folder Structure
+Your repo must look like this:
 
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-
-subprojects {
-    project.evaluationDependsOn(':app')
-}
-
-tasks.register("clean", Delete) {
-    delete rootProject.buildDir
-}
-3. android/app/build.gradle — Replace Entire File
-gradle
-plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin"
-}
-
-android {
-    namespace "com.example.make_pdf"
-    compileSdk 34
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
-
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
-
-    defaultConfig {
-        applicationId "com.example.make_pdf"
-        minSdk 21
-        targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
-    }
-
-    buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-        }
-    }
-}
-
-flutter {
-    source '../..'
-}
-4. Update codemagic.yaml
-yaml
-workflows:
-  android-release:
-    name: Android AAB Build
-    max_build_duration: 60
-    instance_type: mac_mini_m1
-    environment:
-      flutter: stable
-    scripts:
-      - flutter clean
-      - flutter pub get
-      - flutter build appbundle --release
-    artifacts:
-      - build/app/outputs/bundle/release/*.aab
-Important: Verify Files Were Updated
-After editing, go to your GitHub repo and open each file to confirm the changes are there. The root build.gradle should NOT have a buildscript {} block anymore.
-
-Then push and rebuild.
-
-If Still Failing
-Click "Show command" in Codemagic and expand the full log. Look for lines mentioning which plugin or file is using v1 embedding. Share that full log and I'll pinpoint the exact issue.
-
-Attached image
-The error keeps happening because your android/app/build.gradle still has the old apply plugin: format. Here's the definitive fix — follow these steps exactly:
-
-Complete Fix — Do ALL Steps
-Step 1: Open your GitHub repo
-Go to: github.com/patshahwaheguru-hash/MakePDF
-
-Step 2: Edit android/app/build.gradle
-Click on the file, click the pencil icon (edit), delete ALL content, paste this:
+MakePDF/
+├── android/
+│   ├── app/
+│   │   ├── build.gradle
+│   │   └── src/main/
+│   │       ├── AndroidManifest.xml
+│   │       └── kotlin/com/example/make_pdf/MainActivity.kt
+│   ├── build.gradle
+│   ├── settings.gradle          ← MUST EXIST with "include :app"
+│   └── gradle.properties
+├── lib/
+│   ├── main.dart
+│   └── MMain.dart
+├── pubspec.yaml
+└── codemagic.yaml
+Step 5: Also Update android/app/build.gradle
+Replace with:
 
 gradle
 plugins {
